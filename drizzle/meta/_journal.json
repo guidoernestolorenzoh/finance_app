@@ -1,0 +1,34 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1725656639722,
+      "tag": "0000_quiet_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1725721149464,
+      "tag": "0001_absurd_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1727118124138,
+      "tag": "0002_silky_rogue",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1727289792193,
+      "tag": "0003_careless_kid_colt",
+      "breakpoints": true
+    }
+  ]
+}
