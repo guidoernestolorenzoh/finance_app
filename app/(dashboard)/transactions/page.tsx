@@ -15,14 +15,67 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useState } from "react";
+import UploadButton from "./upload-button";
+import { ImportCard } from "./import-card";
+import { transactions as transactionSchema } from "@/db/schema";
+import { useSelectAccount } from "@/features/accounts/hooks/use-select-account";
+import { toast } from "sonner";
+import { useBulkCreateTransactions } from "@/features/transactions/api/use-bulk-create-transactions";
+
+enum VARIANTS {
+  LIST = "LIST",
+  IMPORT = "IMPORT",
+};
+
+const INITIAL_IMPORT_RESULTS = {
+  data: [],
+  errors: [],
+  meta: {}
+};
 
 const TransactionPage = () => {
+  const [AccountDialog, confirm] = useSelectAccount();
+  const [variant, setVariant] = useState<VARIANTS>(VARIANTS.LIST);
+  const [importResults, setImportResults] = useState(INITIAL_IMPORT_RESULTS);
+
+  const onUpload = (results: typeof INITIAL_IMPORT_RESULTS) => {
+    setImportResults(results);
+    setVariant(VARIANTS.IMPORT);
+  };
+  
+  const onCancelImport = () => {
+    setImportResults(INITIAL_IMPORT_RESULTS);
+    setVariant(VARIANTS.LIST);
+  };
+  
+  
   const newTransaction = useNewTransaction();
+  const createTransactions = useBulkCreateTransactions();
   const deleteTransactions = useBulkDeleteTransactions();
   const transactionsQuery = useGetTransactions();
   const transactions = transactionsQuery.data || [];
   
   const isDisabled = transactionsQuery.isLoading || deleteTransactions.isPending;
+ 
+  const onSubmitImport = async (values: typeof transactionSchema.$inferInsert[]) => {
+      const accountId = await confirm();
+
+      if (!accountId) {
+        return toast.error("Please select an account to continue")
+      }
+
+      const data = values.map((value) => ({
+        ...value,
+        accountId: accountId as string,
+      }));
+
+      createTransactions.mutate(data, {
+        onSuccess: () => {
+          onCancelImport();
+        }
+      })
+    };
 
   if (transactionsQuery.isLoading) {
     return (
@@ -40,26 +93,42 @@ const TransactionPage = () => {
       </div>
     );
   }
+
+  if (variant === VARIANTS.IMPORT) {
+    return (
+      <>
+        <AccountDialog />
+        <ImportCard 
+          data={importResults.data}
+          onCancel={onCancelImport}
+          onSubmit={onSubmitImport}
+        />
+      </>
+    )
+  }
  
   return (
     <div className="w-full max-w-screen-2xl mx-auto pb-10 -mt-24">
       <Card className="border-none drop-shadow-md">
         <CardHeader className="gap-y-2 lg:flex-row lg:items-center lg:justify-between">
           <CardTitle className="text-xl line-clamp-1">Transaction history</CardTitle>
-          <Button onClick={newTransaction.onOpen} size="sm">
-            <Plus className="size-4 mr-2" /> Add new
-          </Button>
+          <div className="flex flex-col justify-end items-center space-x-2 gap-y-2 lg:flex-row">
+            <Button className="w-full lg:w-auto" onClick={newTransaction.onOpen} size="sm">
+              <Plus className="size-4 mr-2" /> Add new
+            </Button>
+            <UploadButton onUpload={onUpload} />
+          </div>
         </CardHeader>
         <CardContent>
           <DataTable
-            onDelete={(row) => {
-              const ids = row.map((r) => r.original.id);
-              deleteTransactions.mutate({ids});
-            }}
-            filterKey="name"
-            columns={columns}
-            data={transactions}
-            disabled={isDisabled}
+              filterKey="payee"
+              columns={columns}
+              data={transactions}
+              onDelete={(row) => {
+                const ids = row.map((r) => r.original.id);
+                deleteTransactions.mutate({ids});
+              }}
+              disabled={isDisabled}
           />
         </CardContent>
       </Card>
